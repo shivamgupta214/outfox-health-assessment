@@ -2,11 +2,11 @@
 Healthcare Cost Navigator
 A full-stack application designed to help users explore healthcare pricing and quality data. It features data ingestion via CSV uploads, structured querying for healthcare providers, and a real-time AI-powered natural language interface to query the data.
 
-![App Screenshot](https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.15%E2%80%AFPM.png)
-
 <img src="https://github.com/shivamgupta214/outfox-health-assessment/raw/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.15%E2%80%AFPM.png" alt="App Screenshot" width="600"/>
 
+<img src="https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.31%E2%80%AFPM.png" alt="App Screenshot" width="600"/>
 
+<img src="https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.46%E2%80%AFPM.png" alt="App Screenshot" width="600"/>
 
 Features
 CSV Data Upload: Upload hospital data and generate mock star ratings from CSV files.
