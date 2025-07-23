@@ -2,6 +2,9 @@
 Healthcare Cost Navigator
 A full-stack application designed to help users explore healthcare pricing and quality data. It features data ingestion via CSV uploads, structured querying for healthcare providers, and a real-time AI-powered natural language interface to query the data.
 
+https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.15%E2%80%AFPM.png
+
+
 Features
 CSV Data Upload: Upload hospital data and generate mock star ratings from CSV files.
 
@@ -14,53 +17,9 @@ Real-time Chat Interface: Interact with the AI using a WebSocket connection for 
 Responsive UI: A clean and modern user interface built with React and custom CSS.
 
 System Design
+https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/sys_design.png
 
-graph TD
 
-  %% Frontend
-  subgraph Frontend [Frontend (React Application)]
-    A[User Interface]
-  end
-
-  %% Backend
-  subgraph Backend [Backend (FastAPI Application)]
-    B[API Endpoints]
-    C[ETL Module]
-    D[AI Service]
-  end
-
-  %% Data Layer
-  subgraph Data_Layer [Data Layer]
-    E[PostgreSQL Database]
-  end
-
-  %% External Services
-  subgraph External_Services [External Services]
-    F[OpenAI API]
-  end
-
-  %% Connections
-  A -- HTTP Requests --> B
-  A -- WebSocket Connection --> B
-
-  B -- Calls ETL Functions --> C
-  B -- Queries Database --> E
-  B -- Calls AI Service --> D
-
-  C -- Reads/Writes Data --> E
-
-  D -- API Calls --> F
-  F -- AI Responses --> D
-
-  E -- Data Results --> B
-
-  B -- HTTP/WebSocket Responses --> A
-
-  %% Styling
-  style Frontend fill:#e0f2f7,stroke:#3498db,stroke-width:2px
-  style Backend fill:#e8f5e9,stroke:#27ae60,stroke-width:2px
-  style Data_Layer fill:#f3e5f5,stroke:#9b59b6,stroke-width:2px
-  style External_Services fill:#fff3e0,stroke:#f39c12,stroke-width:2px
 
 
 Technology Stack
