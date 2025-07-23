@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-dotenv
+sqlalchemy
+psycopg2-binary
+passlib
+python-multipart
+python-dateutil
+python-dotenv
+openai
+geopy
+pandas
