@@ -15,47 +15,53 @@ Responsive UI: A clean and modern user interface built with React and custom CSS
 
 System Design
 
+graph TD
 
+  %% Frontend
+  subgraph Frontend [Frontend (React Application)]
+    A[User Interface]
+  end
 
-    graph TD
-    subgraph Frontend (React Application)
-        A[User Interface]
-    end
-    
-    subgraph Backend (FastAPI Application)
-        B[API Endpoints]
-        C[ETL Module]
-        D[AI Service]
-    end
+  %% Backend
+  subgraph Backend [Backend (FastAPI Application)]
+    B[API Endpoints]
+    C[ETL Module]
+    D[AI Service]
+  end
 
-    subgraph Data Layer
-        E[PostgreSQL Database]
-    end
+  %% Data Layer
+  subgraph Data_Layer [Data Layer]
+    E[PostgreSQL Database]
+  end
 
-    subgraph External Services
-        F[OpenAI API]
-    end
+  %% External Services
+  subgraph External_Services [External Services]
+    F[OpenAI API]
+  end
 
-    A -- HTTP Requests --> B
-    A -- WebSocket Connection --> B
+  %% Connections
+  A -- HTTP Requests --> B
+  A -- WebSocket Connection --> B
 
-    B -- Calls ETL Functions --> C
-    B -- Queries Database --> E
-    B -- Calls AI Service --> D
+  B -- Calls ETL Functions --> C
+  B -- Queries Database --> E
+  B -- Calls AI Service --> D
 
-    C -- Reads/Writes Data --> E
+  C -- Reads/Writes Data --> E
 
-    D -- API Calls --> F
-    F -- AI Responses --> D
+  D -- API Calls --> F
+  F -- AI Responses --> D
 
-    E -- Data Results --> B
+  E -- Data Results --> B
 
-    B -- HTTP/WebSocket Responses --> A
+  B -- HTTP/WebSocket Responses --> A
 
-    style Frontend fill:#e0f2f7,stroke:#3498db,stroke-width:2px
-    style Backend fill:#e8f5e9,stroke:#27ae60,stroke-width:2px
-    style Data Layer fill:#f3e5f5,stroke:#9b59b6,stroke-width:2px
-    style External Services fill:#fff3e0,stroke:#f39c12,stroke-width:2px
+  %% Styling
+  style Frontend fill:#e0f2f7,stroke:#3498db,stroke-width:2px
+  style Backend fill:#e8f5e9,stroke:#27ae60,stroke-width:2px
+  style Data_Layer fill:#f3e5f5,stroke:#9b59b6,stroke-width:2px
+  style External_Services fill:#fff3e0,stroke:#f39c12,stroke-width:2px
+
 
 Technology Stack
 Backend:
