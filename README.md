@@ -14,11 +14,14 @@ Real-time Chat Interface: Interact with the AI using a WebSocket connection for 
 Responsive UI: A clean and modern user interface built with React and custom CSS.
 
 System Design
-graph TD
+
+
+
+    graph TD
     subgraph Frontend (React Application)
         A[User Interface]
     end
-
+    
     subgraph Backend (FastAPI Application)
         B[API Endpoints]
         C[ETL Module]
@@ -195,50 +198,38 @@ volumes:
 
 b. Create backend/Dockerfile
 
-# backend/Dockerfile
+
 FROM python:3.11-slim-buster
 
 WORKDIR /app
 
-# Copy requirements.txt and install dependencies first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend application code
 COPY . .
 
-# Expose the port FastAPI runs on
 EXPOSE 8000
 
-# Command to run the FastAPI application using Uvicorn
-# --reload is good for development, remove in production
+
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 c. Create outfox-frontend/Dockerfile
 
-# outfox-frontend/Dockerfile
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package.json and yarn.lock (or package-lock.json) and install dependencies
-# This step is done separately to leverage Docker cache
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
-# If you are using npm, use:
-# COPY package.json package-lock.json ./
-# RUN npm install --ci
 
-# Copy the rest of the frontend application code
 COPY . .
 
-# Expose the port React development server runs on
 EXPOSE 3000
 
-# Command to start the React development server
+
 CMD ["yarn", "start"]
-# If you are using npm, use:
-# CMD ["npm", "start"]
+
+CMD ["npm", "start"]
 
 d. Create .env file in backend/ directory
 
