@@ -2,7 +2,7 @@ Healthcare Cost Navigator
 A full-stack application designed to help users explore healthcare pricing and quality data. It features data ingestion via CSV uploads, structured querying for healthcare providers, and a real-time AI-powered natural language interface to query the data.
 
 Features
-CSV Data Upload: Upload hospital data and upload hospital star ratings CSV files.
+CSV Data Upload: Upload hospital data and generate mock star ratings from CSV files.
 
 Structured Provider Search: Find healthcare providers based on ZIP code, radius, and MS-DRG (Medical Severity Diagnosis Related Group) keywords.
 
@@ -88,87 +88,221 @@ Custom CSS: For styling the user interface.
 
 Project Structure
 healthcare-cost-navigator/
-├── .env                  # Environment variables (API keys, DB URL)
-├── main.py               # Entry point for the FastAPI backend
-├── api.py                # FastAPI application, API endpoints (REST & WebSocket)
-├── ai_service.py         # AI logic for NL2SQL and summarization
-├── websocket_client.html # Simple HTML/JS client for WebSocket testing
-├── etl/
-│   ├── __init__.py       # Makes 'etl' a Python package
-│   └── etl.py            # ETL logic for processing CSV data
-├── models/
-│   ├── __init__.py       # Makes 'models' a Python package
-│   └── models.py         # SQLAlchemy ORM models for database tables
-└── outfox-frontend/             # Your React application directory (assuming this structure)
-    ├── public/
-    ├── src/
-    │   ├── App.js
-    │   ├── App.css
-    │   └── components/
-    │       ├── ChatPage.js
-    │       ├── FileUpload.js
-    │       ├── GetProvidersPage.js
-    │       └── NavigationBar.js
-    └── package.json
-    └── ...
+├── backend/
+│   ├── .env                  # Environment variables (API keys, DB URL)
+│   ├── main.py               # Entry point for the FastAPI backend
+│   ├── api/
+│   │   └── apis.py           # FastAPI application, API endpoints (REST & WebSocket)
+│   ├── models/
+│   │   ├── __init__.py       # Makes 'models' a Python package
+│   │   └── models.py         # SQLAlchemy ORM models for database tables
+│   ├── ai_service/
+│   │   ├── __init__.py       # Makes 'ai_service' a Python package
+│   │   └── ai_service.py     # AI logic for NL2SQL and summarization
+│   ├── etl/                  # ETL module (assuming this location)
+│   │   ├── __init__.py       # Makes 'etl' a Python package
+│   │   └── etl.py            # ETL logic for processing CSV data
+│   └── requirements.txt      # Backend Python dependencies
+├── outfox-frontend/          # Your React application directory
+│   ├── public/
+│   ├── src/
+│   │   ├── App.js
+│   │   ├── App.css
+│   │   └── components/
+│   │       ├── ChatPage.js
+│   │       ├── FileUpload.js
+│   │       ├── GetProvidersPage.js
+│   │       └── NavigationBar.js
+│   ├── package.json
+│   └── ...
+└── .gitignore                # Specifies files/directories to ignore in Git
 
 Setup Instructions
 Prerequisites
-Python 3.8+
+Docker and Docker Compose: For containerized deployment (recommended).
+
+Python 3.8+ (if running directly without Docker)
 
 Node.js & npm/yarn (for the React frontend)
 
-PostgreSQL Database: Ensure you have a PostgreSQL server running and access to a database.
+PostgreSQL Database: If not using Docker Compose, ensure you have a PostgreSQL server running and access to a database.
 
 1. Clone the Repository
 git clone <your-repository-url>
 cd healthcare-cost-navigator
 
-2. Backend Setup (FastAPI)
-Navigate to the backend root directory (where main.py is located).
+2. Docker Compose Setup (Recommended)
+This method simplifies setting up both the backend and database.
 
-cd healthcare-cost-navigator # If you're not already there
+a. Create docker-compose.yml in the project root (healthcare-cost-navigator/)
 
-a. Create a Python Virtual Environment (Recommended)
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: healthcare_db
+    environment:
+      POSTGRES_DB: healthcare_navigator_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d healthcare_navigator_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: healthcare_backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/healthcare_navigator_db
+      OPEN_AI_API: ${OPEN_AI_API} # Read from host's .env or environment
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app # Mount backend code for hot-reloading (development)
+
+  frontend:
+    build:
+      context: ./outfox-frontend
+      dockerfile: Dockerfile
+    container_name: healthcare_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./outfox-frontend:/app # Mount frontend code for hot-reloading (development)
+      - /app/node_modules # Prevent host node_modules from overwriting container's
+    environment:
+      # React apps typically need REACT_APP_ prefix for env vars
+      REACT_APP_BACKEND_URL: http://localhost:8000
+      REACT_APP_WS_URL: ws://localhost:8000/ws/ask
+
+volumes:
+  db_data:
+
+b. Create backend/Dockerfile
+
+# backend/Dockerfile
+FROM python:3.11-slim-buster
+
+WORKDIR /app
+
+# Copy requirements.txt and install dependencies first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the backend application code
+COPY . .
+
+# Expose the port FastAPI runs on
+EXPOSE 8000
+
+# Command to run the FastAPI application using Uvicorn
+# --reload is good for development, remove in production
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+c. Create outfox-frontend/Dockerfile
+
+# outfox-frontend/Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json and yarn.lock (or package-lock.json) and install dependencies
+# This step is done separately to leverage Docker cache
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+# If you are using npm, use:
+# COPY package.json package-lock.json ./
+# RUN npm install --ci
+
+# Copy the rest of the frontend application code
+COPY . .
+
+# Expose the port React development server runs on
+EXPOSE 3000
+
+# Command to start the React development server
+CMD ["yarn", "start"]
+# If you are using npm, use:
+# CMD ["npm", "start"]
+
+d. Create .env file in backend/ directory
+
+# backend/.env
+DATABASE_URL="postgresql://user:password@db:5432/healthcare_navigator_db"
+OPEN_AI_API="your_openai_api_key_here" # Replace with your actual OpenAI API key
+
+Note: When using Docker Compose, the DATABASE_URL for the backend container points to the db service name, not localhost.
+
+e. Build and Run with Docker Compose
+
+From the project root (healthcare-cost-navigator/):
+
+docker-compose build
+docker-compose up
+
+This will build the images, start the PostgreSQL database, backend, and frontend containers.
+
+3. Manual Setup (Without Docker Compose)
+If you prefer to run directly on your host machine:
+
+a. Backend Setup (FastAPI)
+
+Navigate to the backend directory.
+
+cd backend
+
+i. Create a Python Virtual Environment (Recommended)
 
 python3 -m venv venv
 source venv/bin/activate   # On Windows: .\venv\Scripts\activate
 
-b. Install Python Dependencies
+ii. Install Python Dependencies
 
 pip install -r requirements.txt
 # If you don't have a requirements.txt, you can create one or install manually:
 # pip install fastapi uvicorn[standard] sqlalchemy pandas python-dotenv openai psycopg2-binary geopy
 
-c. Create a .env file
+iii. Create a .env file in backend/ directory
 
-In the root directory of your backend (healthcare-cost-navigator/), create a file named .env and add the following variables:
-
-DATABASE_URL="postgresql://user:password@host:port/database_name"
+# backend/.env
+DATABASE_URL="postgresql://user:password@localhost:5432/database_name" # Replace with your host DB details
 OPEN_AI_API="your_openai_api_key_here"
 
-Replace user, password, host, port, and database_name with your PostgreSQL credentials.
-
-Replace your_openai_api_key_here with your actual OpenAI API key.
-
-d. Run the FastAPI Backend
+iv. Run the FastAPI Backend
 
 uvicorn main:app --reload
 
 The backend server will start, typically on http://127.0.0.1:8000. Keep this terminal window open.
 
-3. Frontend Setup (React)
-Navigate to your frontend application directory (e.g., healthcare-cost-navigator/frontend/).
+b. Frontend Setup (React)
 
-cd frontend
+Navigate to your frontend application directory.
 
-a. Install Node.js Dependencies
+cd ../outfox-frontend # Assuming you are in the 'backend' directory
+# or if you are in the project root:
+# cd outfox-frontend
+
+i. Install Node.js Dependencies
 
 npm install
 # or
 yarn install
 
-b. Run the React Development Server
+ii. Run the React Development Server
 
 npm start
 # or
@@ -176,102 +310,115 @@ yarn start
 
 The React app will open in your browser, typically on http://localhost:3000.
 
-Usage Instructions
-Once both the backend and frontend servers are running:
+Database Seeding Instructions
+After starting the backend (either via Docker Compose or manually), the database tables (hospital_data and star_rating) will be automatically created on startup.
 
-1. Database Initialization & Data Upload
-Open your browser and go to the FastAPI interactive API documentation: http://127.0.0.1:8000/docs.
+To populate them with data:
 
-Database Table Creation: When you start the FastAPI backend (uvicorn main:app --reload), it automatically attempts to create the hospital_data and star_rating tables in your PostgreSQL database based on your models/models.py. You should see INFO: Database tables created successfully in your backend terminal.
+Download Sample CSV: Obtain your MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv file. Place it in a convenient location (e.g., in your backend/ directory for easier access if using cURL, or just remember its path).
 
-Important: If you make changes to your models.py (e.g., add/remove columns, change column names), you MUST stop the backend, drop the hospital_data and star_rating tables from your PostgreSQL database (using PgAdmin or psql), and then restart the backend to recreate them with the new schema.
+Upload via Frontend:
 
-Upload Hospital Data:
+Open your browser and go to http://localhost:3000.
 
-Find the /upload-hospital-data endpoint in the Swagger UI (http://127.0.0.1:8000/docs).
+On the home page, use the "Upload Hospital Data" and "Upload Hospital Rating" sections. Select your CSV file for both and click "Upload".
 
-Click "Try it out".
+Upload via Swagger UI (Backend API Docs):
 
-Click "Choose File" and select your MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv file.
+Open your browser and go to http://127.0.0.1:8000/docs.
 
-Click "Execute".
+Find the /upload-hospital-data endpoint. Click "Try it out", select your CSV, and Execute.
 
-Upload Hospital Rating (Generates Mock Ratings):
+Find the /upload-hospital-rating endpoint. Click "Try it out", select the same CSV, and Execute. (This generates mock ratings for unique providers found in the CSV).
 
-Find the /upload-hospital-rating endpoint in the Swagger UI.
+Sample cURL Commands
+Replace http://localhost:8000 with your backend URL if it's different (e.g., if you're deploying to a cloud service).
 
-Click "Try it out".
+1. Upload Hospital Data (POST)
 
-Click "Choose File" and select the same MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv file. This endpoint uses the provider IDs from this CSV to generate and store mock star ratings.
+curl -X POST "http://localhost:8000/upload-hospital-data" \
+-H "accept: application/json" \
+-H "Content-Type: multipart/form-data" \
+-F "file=@/path/to/your/MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv;type=text/csv"
 
-Click "Execute".
+Replace /path/to/your/MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv with the actual path to your CSV file on your local machine.
 
-2. Using the Frontend Application (http://localhost:3000)
-Home Page (/): After uploading, you'll see the file upload components.
+2. Upload Hospital Rating (POST)
 
-Get Providers Page (/get-providers):
+curl -X POST "http://localhost:8000/upload-hospital-rating" \
+-H "accept: application/json" \
+-H "Content-Type: multipart/form-data" \
+-F "file=@/path/to/your/MUP_INP_RY24_P03_V10_DY22_PrvSvc.csv;type=text/csv"
 
-Click the "Get Providers" button in the navigation bar.
+Use the same CSV file as for hospital data.
 
-Enter a ZIP Code (e.g., 36301, 10001).
+3. Search Providers (GET)
 
-Enter a Radius (km) (e.g., 25, 50).
+curl -X GET "http://localhost:8000/providers?zip_code=36301&radius_km=50&ms_drg=HEART%20SURGERY" \
+-H "accept: application/json"
 
-Enter an MS DRG Keyword (e.g., HEART SURGERY, KNEE REPLACEMENT, CHEST PAIN).
+4. Ask AI (Natural Language Query - POST)
 
-Click "Search Providers" to see structured results.
+curl -X POST "http://localhost:8000/ask?natural_language_query=What%27s%20the%20cheapest%20hospital%20for%20knee%20replacement%3F" \
+-H "accept: application/json"
 
-AI Chat Page (/chat):
+5. WebSocket Chat (/ws/ask)
 
-Click the "AI Chat" button in the navigation bar.
+cURL does not directly support interactive WebSocket communication. You can test this endpoint using:
 
-The chat window will attempt to connect to the backend WebSocket. You should see "Connected to AI Chat."
+Browser Developer Console: Open http://localhost:3000/chat, open the browser console (F12), and type messages.
 
-Type your natural language questions in the input field (e.g., "Who has the best ratings for heart surgery near 36301?", "What is the cheapest hospital for pneumonia in 10001?").
+wscat (Node.js CLI tool):
 
-Press Enter or click "Send" to get an AI-generated summary.
+npm install -g wscat
+wscat -c ws://localhost:8000/ws/ask
 
-Try asking an irrelevant question like "What's the weather today?" to see the custom error message.
+Then type your queries in the terminal.
 
-Troubleshooting Common Issues
-psycopg2.errors.UndefinedTable: relation "star_rating" does not exist or UndefinedColumn:
+Example AI Prompts
+The AI assistant can answer questions related to hospital pricing, quality, and procedures. Here are some examples:
 
-Cause: Your database schema doesn't match your models.py definition, or the table was not created/recreated correctly. This is often due to mismatched column names (e.g., ms_drg_defination vs. ms_drg_definition, provider_zip vs. provider_zip_code, rating vs. overall_rating) or table names (star_ratings vs. star_rating).
+"Who has the best ratings for heart surgery near 36301?"
 
-Solution:
+"What is the cheapest hospital for pneumonia in New York?"
 
-Stop your FastAPI backend.
+"List hospitals in California with high total discharges for stroke treatment."
 
-In PgAdmin, drop both hospital_data and star_rating tables.
+"Show me the average covered charges for appendectomy in zip code 90210."
 
-Ensure all your Python files (models/models.py, ai_service.py, etl/etl.py, api.py) have the correct and consistent table and column names as defined in the latest models/models.py.
+"Which providers have a rating of 8 or higher for any procedure?"
 
-Restart your FastAPI backend. This will recreate the tables with the correct schema.
+"Tell me about hospitals in Texas that perform hip replacement surgery."
 
-Re-upload your CSV data using the /upload-hospital-data and /upload-hospital-rating endpoints in Swagger UI.
+Architecture Decisions and Trade-offs
+FastAPI for Backend: Chosen for its high performance, modern Python features (async/await), automatic API documentation (Swagger UI), and strong type hints, which accelerate development.
 
-openai.OpenAIError: The api_key client option must be set...:
+React for Frontend: Provides a component-based architecture for building dynamic and responsive user interfaces.
 
-Cause: The OpenAI client is not receiving your API key. This usually means the OPEN_AI_API environment variable is not loaded or not passed correctly to the AIService constructor.
+PostgreSQL for Database: A robust, open-source relational database suitable for structured healthcare data.
 
-Solution:
+NL2SQL with OpenAI:
 
-Ensure your .env file exists in the backend root and contains OPEN_AI_API="your_key_here".
+Decision: Leveraging large language models (LLMs) for natural language understanding allows for a highly intuitive user experience, removing the need for users to learn SQL or complex search filters.
 
-Verify that api.py correctly reads this variable and passes it to AIService(api_key=OPENAI_API_KEY).
+Trade-offs:
 
-Restart your FastAPI backend.
+Cost: API calls to OpenAI incur costs.
 
-WebSocket connection to 'ws://localhost:8000/ws/ask/' failed: ... (Frontend Console Error):
+Latency: While generally fast, LLM calls add a small amount of latency compared to direct database queries.
 
-Cause: The React frontend cannot establish a connection to the WebSocket endpoint.
+Accuracy: LLM output can sometimes be non-deterministic or generate incorrect SQL, though prompt engineering aims to minimize this. Robust error handling and input validation are crucial.
 
-Solution:
+Security: Directly executing AI-generated SQL is a significant security risk (SQL Injection). In a production environment, rigorous sanitization, whitelisting, or using parameterized queries with an ORM (like SQLAlchemy's query builder for GET /providers) is essential. For the /ask endpoint, the prompt is designed to produce safe SELECT statements, but this should be hardened for production.
 
-Is your FastAPI backend running? (Check the terminal).
+WebSockets for Chat:
 
-Is the WebSocket URL correct in ChatPage.js? It should be ws://localhost:8000/ws/ask.
+Decision: Provides a persistent, bi-directional communication channel, ideal for real-time chat experiences where multiple queries and responses flow continuously without the overhead of repeated HTTP handshakes.
 
-Clear your browser cache and hard refresh the React application page (Ctrl+Shift+R or Cmd+Shift+R). Old cached JavaScript might be trying to connect to a wrong URL.
+Trade-offs: More complex to set up and manage compared to simple HTTP requests, requiring state management on both client and server.
 
-Check your FastAPI terminal for 403 Forbidden errors on the WebSocket path, which could indicate a URL mismatch or CORS issue.
+Mock Geospatial Data & Ratings:
+
+Decision: For simplicity and to focus on the core NL2SQL and ETL logic, a pre-defined dictionary (ZIP_CODE_LAT_LON_MAP) is used for ZIP code coordinates, and random ratings are generated.
+
+Trade-offs: Not production-ready for real-world geospatial searches or actual hospital ratings. A production system would integrate with a dedicated geospatial database (e.g., PostGIS) and real hospital rating APIs.
