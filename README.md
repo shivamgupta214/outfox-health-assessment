@@ -10,6 +10,8 @@ A full-stack application designed to help users explore healthcare pricing and q
 
 <img src="https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.57%E2%80%AFPM.png" alt="App Screenshot" width="600"/>
 
+[![Watch the video](https://github.com/shivamgupta214/outfox-health-assessment/blob/main/ScreenRecoding.mp4)
+
 
 
 Features
