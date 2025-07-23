@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: healthcare_db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d healthcare_navigator_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: healthcare_backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/healthcare_navigator_db
+      OPEN_AI_API: ${OPEN_AI_API} # Read from host's .env or environment
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app # Mount backend code for hot-reloading (development)
+
+  frontend:
+    build:
+      context: ./outfox-frontend
+      dockerfile: Dockerfile
+    container_name: healthcare_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./outfox-frontend:/app # Mount frontend code for hot-reloading (development)
+      - /app/node_modules # Prevent host node_modules from overwriting container's
+    environment:
+      # React apps typically need REACT_APP_ prefix for env vars
+      REACT_APP_BACKEND_URL: http://localhost:8000
+      REACT_APP_WS_URL: ws://localhost:8000/ws/ask
+
+volumes:
+  db_data:
