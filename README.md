@@ -1,3 +1,4 @@
+
 Healthcare Cost Navigator
 A full-stack application designed to help users explore healthcare pricing and quality data. It features data ingestion via CSV uploads, structured querying for healthcare providers, and a real-time AI-powered natural language interface to query the data.
 
