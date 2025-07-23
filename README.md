@@ -4,6 +4,9 @@ A full-stack application designed to help users explore healthcare pricing and q
 
 ![App Screenshot](https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.15%E2%80%AFPM.png)
 
+<img src="https://github.com/shivamgupta214/outfox-health-assessment/raw/main/project_screenshots/Screenshot%202025-07-22%20at%2011.57.15%E2%80%AFPM.png" alt="App Screenshot" width="600"/>
+
+
 
 Features
 CSV Data Upload: Upload hospital data and generate mock star ratings from CSV files.
