@@ -16,8 +16,7 @@ Real-time Chat Interface: Interact with the AI using a WebSocket connection for 
 
 Responsive UI: A clean and modern user interface built with React and custom CSS.
 
-System Design
-https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/sys_design.png
+![System Design](https://github.com/shivamgupta214/outfox-health-assessment/blob/main/project_screenshots/sys_design.png)
 
 
 
